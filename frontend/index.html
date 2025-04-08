@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ฟอร์มบันทึกหนังสือเข้า</title>
+</head>
+<body>
+  <h2>ฟอร์มบันทึกหนังสือเข้า</h2>
+  <form id="form">
+    <label>ประทับตรา: <input name="stamp" required></label><br>
+    <label>เลขบัตร ปชช.: <input name="idcard" required></label><br>
+    <label>คำนำหน้าหรือยศ: <input name="prefix"></label><br>
+    <label>ชื่อ: <input name="firstname" required></label><br>
+    <label>สกุล: <input name="lastname" required></label><br>
+    <label>หน่วยเจ้าของเรื่อง: <input name="department" required></label><br>
+    <label>เลขหนังสือเข้า: <input name="docnumber" required></label><br>
+    <label>วันที่หนังสือเข้า: <input type="date" name="docdate" required></label><br>
+    <label>สถานะ: <input name="status" required></label><br><br>
+    <button type="submit">ส่งข้อมูล</button>
+  </form>
+
+  <p id="result"></p>
+
+  <script>
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbwts-N3Yw2csJOl6t2JzMHZnUjcRnrPWR0D6GKQ45_-j7v61jOYJXRVGhP1bj-RfYNM/exec'; // ใส่ลิงก์ Apps Script ตรงนี้
+
+    document.getElementById('form').addEventListener('submit', e => {
+      e.preventDefault();
+      const formData = Object.fromEntries(new FormData(e.target).entries());
+
+      fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify(formData)
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('result').innerText = '✅ บันทึกสำเร็จ';
+        document.getElementById('form').reset();
+      })
+      .catch(err => {
+        document.getElementById('result').innerText = '❌ เกิดข้อผิดพลาด';
+        console.error(err);
+      });
+    });
+  </script>
+</body>
+</html>
