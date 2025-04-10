@@ -1,3 +1,16 @@
+const morgan = require('morgan');
+app.use(morgan('combined'));
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms'));
+const fs = require('fs');
+const path = require('path');
+
+const accessLogStream = fs.createWriteStream(
+  path.join(__dirname, 'access.log'),
+  { flags: 'a' } // append mode
+);
+
+app.use(morgan('combined', { stream: accessLogStream }));
+
 app.delete('/api/delete-file', auth, async (req, res) => {
     const { idcard, filename } = req.body;
     try {
