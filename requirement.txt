@@ -1,3 +1,8 @@
 Flask==2.1.1
 psycopg2-binary==2.9.3
 SQLAlchemy==1.4.31
+Flask
+Flask-SQLAlchemy
+psycopg2-binary
+python-dotenv
+gunicorn
