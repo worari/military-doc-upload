@@ -6,7 +6,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.secret_key = 'your-secret-key'  # สำหรับ flash message
+app.secret_key = 'e3a91e6c77cb4bc8a4f1f5a13279924cddc5c94d65d9be9e6e738fbd22a1aab4'  # สำหรับ flash message
 
 # เชื่อมต่อ PostgreSQL (Railway)
 conn = psycopg2.connect(
