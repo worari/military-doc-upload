@@ -6,7 +6,7 @@ from datetime import datetime
 
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(app)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.secret_key = 'e3a91e6c77cb4bc8a4f1f5a13279924cddc5c94d65d9be9e6e738fbd22a1aab4'  # สำหรับ flash message
 app.secret_key = os.getenv("SECRET_KEY")
@@ -77,6 +77,6 @@ def dashboard():
     rows = cursor.fetchall()
     return render_template('dashboard.html', submissions=rows)
 
-if __name__ == '__main__':
+if app == '__main__':
     os.makedirs('uploads', exist_ok=True)
     app.run(debug=True)

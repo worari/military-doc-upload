@@ -11,4 +11,4 @@ DB_USER=postgres
 DB_PASSWORD=lNSmektsHjEYXfAZveNvADUzFcuvoCXw
 
 # ใช้ใน SQLAlchemy หรือ psycopg2
-DATABASE_URL=postgresql://postgres:lNSmektsHjEYXfAZveNvADUzFcuvoCXw@postgres.railway.internal:5432/railway
+DATABASE_URL=postgresql://postgres:lNSmektsHjEYXfAZveNvADUzFcuvoCXw@maglev.proxy.rlwy.net:57008/railway
