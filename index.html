@@ -1,1 +1,1093 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรับรองเวลาราชการ กองทัพบก</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for Dashboard -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <style>
+        /* ... CSS Styles (เหมือนเดิม) ... */
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f4f7f6;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        .main-container {
+            display: none; /* Hidden by default */
+        }
+        .card {
+            border: none;
+            border-radius: .75rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,.1);
+        }
+        .form-control, .form-select {
+            border-radius: .5rem;
+        }
+        .btn-primary {
+            background-color: #004d40;
+            border-color: #004d40;
+            border-radius: .5rem;
+        }
+        .btn-primary:hover {
+            background-color: #00382e;
+            border-color: #00382e;
+        }
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.4em 0.7em;
+            border-radius: 0.5rem;
+            min-width: 100px;
+            text-align: center;
+            display: inline-block;
+        }
+        .status-รับเรื่อง { background-color: #e3f2fd; color: #1565c0; }
+        .status-กำลังดำเนินการ { background-color: #fff3e0; color: #e65100; }
+        .status-แก้ไขข้อมูล { background-color: #ffebee; color: #c62828; }
+        .status-เสร็จสิ้น { background-color: #e8f5e9; color: #2e7d32; }
+        
+        .file-preview-item {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border: 1px solid #ddd;
+            border-radius: .5rem;
+            margin: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-direction: column;
+            font-size: 0.7rem;
+            text-align: center;
+            padding: 2px;
+        }
+        .file-preview-item img {
+            max-width: 100%;
+            max-height: 70%;
+        }
+        .file-preview-item small {
+             white-space: nowrap;
+             overflow: hidden;
+             text-overflow: ellipsis;
+             width: 95%;
+        }
+        .remove-file-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            line-height: 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .auth-container {
+            max-width: 400px;
+            margin: 5rem auto;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loader -->
+    <div id="loader" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Login/Register View -->
+    <div id="auth-view">
+        <!-- ... HTML ส่วน Login (เหมือนเดิม) ... -->
+        <div class="container auth-container">
+            <div class="card p-4">
+                 <div class="text-center mb-4">
+                     <img src="https://dop.rta.mi.th/www/dop_wp/wp-content/uploads/2023/05/logo-1.png" alt="Logo" width="80">
+                     <h3 class="mt-3">ระบบรับรองเวลาราชการ</h3>
+                     <p class="text-muted">กองทัพบก</p>
+                 </div>
+                <!-- Login Form -->
+                <div id="login-form-container">
+                    <h5 class="mb-3">เข้าสู่ระบบ</h5>
+                    <form id="login-form">
+                        <div class="mb-3">
+                            <label for="login-username" class="form-label">อีเมล</label>
+                            <input type="email" class="form-control" id="login-username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="login-password" class="form-label">รหัสผ่าน</label>
+                            <input type="password" class="form-control" id="login-password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">เข้าสู่ระบบ</button>
+                    </form>
+                    <p class="text-center mt-3">ยังไม่มีบัญชี? <a href="#" id="show-register-link">ลงทะเบียน</a></p>
+                </div>
+                <!-- Register Form -->
+                <div id="register-form-container" style="display: none;">
+                    <h5 class="mb-3">ลงทะเบียน</h5>
+                    <form id="register-form">
+                        <div class="mb-3">
+                            <label for="register-name" class="form-label">ชื่อ-นามสกุล</label>
+                            <input type="text" class="form-control" id="register-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="register-username" class="form-label">อีเมล</label>
+                            <input type="email" class="form-control" id="register-username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="register-password" class="form-label">รหัสผ่าน</label>
+                            <input type="password" class="form-control" id="register-password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">ลงทะเบียน</button>
+                    </form>
+                    <p class="text-center mt-3">มีบัญชีอยู่แล้ว? <a href="#" id="show-login-link">เข้าสู่ระบบ</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Main Application View -->
+    <div class="main-container">
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
+             <!-- ... HTML ส่วน Navbar (เหมือนเดิม) ... -->
+             <div class="container-fluid">
+                <a class="navbar-brand fw-bold" href="#">
+                  <img src="https://dop.rta.mi.th/www/dop_wp/wp-content/uploads/2023/05/logo-1.png" alt="Logo" width="30" height="30" class="d-inline-block align-text-top me-2">
+                  ระบบรับรองเวลาราชการ ทบ.
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link active" aria-current="page" href="#" onclick="showView('dashboard-view')"><i class="bi bi-bar-chart-line-fill me-1"></i> แดชบอร์ด</a>
+                        </li>
+                        <li class="nav-item role-all">
+                            <a class="nav-link" href="#" onclick="showView('form-view')"><i class="bi bi-file-earmark-plus-fill me-1"></i> ยื่นเรื่องใหม่</a>
+                        </li>
+                         <li class="nav-item role-all">
+                            <a class="nav-link" href="#" onclick="showView('table-view')"><i class="bi bi-list-task me-1"></i> รายการของฉัน</a>
+                        </li>
+                        <li class="nav-item role-admin role-inspector">
+                            <a class="nav-link" href="#" onclick="showView('table-view', true)"><i class="bi bi-search me-1"></i> ค้นหาและจัดการเรื่อง</a>
+                        </li>
+                    </ul>
+                    <div class="d-flex align-items-center">
+                       <div id="user-profile" class="me-3 text-end">
+                           <div id="user-name" class="fw-bold"></div>
+                           <small id="user-role" class="text-muted"></small>
+                       </div>
+                        <button class="btn btn-outline-danger btn-sm" id="logout-btn"><i class="bi bi-box-arrow-right me-1"></i> ออกจากระบบ</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="container-fluid p-4">
+
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view">
+                 <!-- ... HTML ส่วน Dashboard (เหมือนเดิม) ... -->
+                <h3 class="mb-4">ภาพรวมระบบ</h3>
+                 <div class="row">
+                    <div class="col-md-3 mb-4">
+                        <div class="card p-3 h-100">
+                            <div class="d-flex align-items-center">
+                                <div class="fs-2 text-primary me-3"><i class="bi bi-files"></i></div>
+                                <div>
+                                    <h6 class="text-muted mb-0">เรื่องทั้งหมด</h6>
+                                    <h4 class="fw-bold" id="total-requests">0</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card p-3 h-100">
+                           <div class="d-flex align-items-center">
+                                <div class="fs-2 text-warning me-3"><i class="bi bi-hourglass-split"></i></div>
+                                <div>
+                                    <h6 class="text-muted mb-0">กำลังดำเนินการ</h6>
+                                    <h4 class="fw-bold" id="pending-requests">0</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card p-3 h-100">
+                           <div class="d-flex align-items-center">
+                                <div class="fs-2 text-danger me-3"><i class="bi bi-exclamation-circle"></i></div>
+                                <div>
+                                    <h6 class="text-muted mb-0">ต้องแก้ไข</h6>
+                                    <h4 class="fw-bold" id="revision-requests">0</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card p-3 h-100">
+                           <div class="d-flex align-items-center">
+                                <div class="fs-2 text-success me-3"><i class="bi bi-check2-circle"></i></div>
+                                <div>
+                                    <h6 class="text-muted mb-0">เสร็จสิ้น</h6>
+                                    <h4 class="fw-bold" id="completed-requests">0</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-7 mb-4">
+                       <div class="card p-3">
+                           <h5 class="mb-3">สถิติเรื่องที่ยื่น (6 เดือนล่าสุด)</h5>
+                           <canvas id="monthlyChart"></canvas>
+                       </div>
+                    </div>
+                     <div class="col-lg-5 mb-4">
+                       <div class="card p-3">
+                           <h5 class="mb-3">สถานะรายการ</h5>
+                           <canvas id="statusChart"></canvas>
+                       </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form View -->
+            <div id="form-view" class="view" style="display: none;">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-body p-4">
+                                <h3 class="card-title mb-4" id="form-title">แบบฟอร์มยื่นเรื่องขอรับรองเวลาราชการ ทบ.</h3>
+                                <form id="data-form">
+                                    <!-- [ใหม่] เพิ่ม hidden input สำหรับเก็บ rowIndex ตอนแก้ไข -->
+                                    <input type="hidden" id="editRowIndex">
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="requesterName" class="form-label">ชื่อ-นามสกุล ผู้ยื่นเรื่อง</label>
+                                            <input type="text" class="form-control" id="requesterName" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="requesterId" class="form-label">เลขประจำตัวประชาชน</label>
+                                            <input type="text" class="form-control" id="requesterId" required maxlength="13" pattern="\d{13}">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="benefitType" class="form-label">ประเภท</label>
+                                        <select class="form-select" id="benefitType" required>
+                                            <option selected disabled value="">-- เลือกประเภท --</option>
+                                            <option>ขอรับรองเวลาราชการ</option>
+                                            <option>ขอหนังสือรับรอง</option>
+                                            <option>ขอสำเนาเอกสาร</option>
+                                            <option>อื่นๆ</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="details" class="form-label">รายละเอียด</label>
+                                        <textarea class="form-control" id="details" rows="4" required placeholder="ระบุรายละเอียดเพิ่มเติม เช่น ขอรับรองเวลาช่วงปีใด หรือต้องการเอกสารใดบ้าง"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="fileUpload" class="form-label">อัปโหลดเอกสารประกอบ (หลายไฟล์ได้)</label>
+                                        <input class="form-control" type="file" id="fileUpload" multiple>
+                                        <small class="text-muted">หมายเหตุ: การแก้ไขเรื่องจะไม่สามารถแก้ไขไฟล์แนบได้ หากต้องการเปลี่ยนไฟล์กรุณาลบเรื่องเดิมและยื่นใหม่</small>
+                                    </div>
+                                    <div id="file-preview-container" class="d-flex flex-wrap mb-3"></div>
+                                    
+                                    <!-- [ใหม่] แก้ไขปุ่มให้รองรับ cảการสร้างและแก้ไข -->
+                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                        <button type="button" class="btn btn-secondary me-md-2" id="cancelEditBtn" style="display:none;">ยกเลิก</button>
+                                        <button type="submit" class="btn btn-primary" id="submitBtn">ส่งข้อมูล</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table View -->
+            <div id="table-view" class="view" style="display: none;">
+                 <!-- ... HTML ส่วน Table (เหมือนเดิม) ... -->
+                <div class="card">
+                    <div class="card-body">
+                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <h3 id="table-title">รายการทั้งหมด</h3>
+                             <div class="d-flex align-items-center">
+                                 <div class="input-group">
+                                    <input type="text" id="searchInput" class="form-control" placeholder="ค้นหา...">
+                                    <button class="btn btn-outline-secondary" type="button" id="searchBtn"><i class="bi bi-search"></i></button>
+                                </div>
+                                <button class="btn btn-success ms-2 role-admin role-inspector" id="exportCsvBtn" title="Export to CSV">
+                                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                                </button>
+                             </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>เลขที่เรื่อง</th>
+                                        <th>ประเภท</th>
+                                        <th>ชื่อผู้ยื่น</th>
+                                        <th>วันที่ยื่น</th>
+                                        <th>สถานะ</th>
+                                        <th>ผู้รับผิดชอบ</th>
+                                        <th>ไฟล์แนบ</th>
+                                        <th>การดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="data-table-body">
+                                    <!-- Data will be populated by script -->
+                                </tbody>
+                            </table>
+                             <p id="no-data-message" class="text-center text-muted mt-4" style="display: none;">ไม่พบข้อมูล</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <!-- ... HTML ส่วน Modals (เหมือนเดิม) ... -->
+        <!-- Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-4">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3">สำเร็จ!</h4>
+                    <p id="successMessage"></p>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">ตกลง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div class="modal fade" id="errorModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-4">
+                    <i class="bi bi-x-circle-fill text-danger" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3">เกิดข้อผิดพลาด!</h4>
+                    <p id="errorMessage"></p>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Assign Inspector Modal -->
+    <div class="modal fade" id="assignModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">มอบหมายผู้ตรวจ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>เรื่องเลขที่: <strong id="assignRecordId"></strong></p>
+                    <div class="mb-3">
+                        <label for="inspectorSelect" class="form-label">เลือกผู้ตรวจ</label>
+                        <select id="inspectorSelect" class="form-select"></select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <input type="hidden" id="assignRowIndex">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" id="confirmAssignBtn">ยืนยันการมอบหมาย</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // ... (ส่วน Mockup data เหมือนเดิม) ...
+       if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+        console.log("Running in dev mode. Mocking google.script.run.");
+        window.google = {
+          script: {
+            run: new Proxy({}, {
+              get(target, prop) {
+                return (...args) => {
+                  const self = {
+                    successCallback: () => {},
+                    failureCallback: () => {},
+                    withSuccessHandler(callback) {
+                      this.successCallback = callback;
+                      return this;
+                    },
+                    withFailureHandler(callback) {
+                      this.failureCallback = callback;
+                      return this;
+                    },
+                  };
+                  
+                  setTimeout(() => {
+                    console.log(`Mocked function call: ${prop}`, args);
+                    try {
+                        if (prop === 'loginUser') {
+                            const [email, pass] = args;
+                            if (email === 'admin@test.com' && pass === '1234') {
+                                self.successCallback({ success: true, user: { name: 'Admin Test', email: 'admin@test.com', role: 'Admin' } });
+                            } else if (email === 'user@test.com' && pass === '1234') {
+                                self.successCallback({ success: true, user: { name: 'User Test', email: 'user@test.com', role: 'User' } });
+                            }
+                            else {
+                                self.successCallback({ success: false, message: 'รหัสผ่านไม่ถูกต้อง (Mock)' });
+                            }
+                        } else if (prop === 'registerUser') {
+                             self.successCallback({ success: true, message: 'ลงทะเบียนสำเร็จ (Mock)' });
+                        } else if (prop === 'saveData' || prop === 'updateData') {
+                            self.successCallback({ success: true, message: 'บันทึกข้อมูลสำเร็จ! (Mock)' });
+                        } else if (prop === 'deleteRecord') {
+                             self.successCallback({ success: true, message: 'ลบข้อมูลสำเร็จ! (Mock)' });
+                        } else if (prop === 'getData') {
+                            const sampleData = [
+                                { rowIndex: 2, id: 'REQ-20251009-0001', benefitType: 'ขอรับรองเวลาราชการ', requesterName: 'สมชาย ใจดี', timestamp: new Date().toISOString(), status: 'เสร็จสิ้น', assignedTo: 'inspector@test.com', submittedBy: 'user@test.com', fileUrls: 'https://#', fileNames: 'doc1.pdf' },
+                                { rowIndex: 3, id: 'REQ-20251009-0002', benefitType: 'ขอหนังสือรับรอง', requesterName: 'สมหญิง จริงใจ', timestamp: new Date().toISOString(), status: 'รับเรื่อง', assignedTo: '', submittedBy: 'user@test.com', fileUrls: '', fileNames: ''  },
+                                { rowIndex: 4, id: 'REQ-20251009-0003', benefitType: 'ขอสำเนาเอกสาร', requesterName: 'Admin Test', timestamp: new Date().toISOString(), status: 'กำลังดำเนินการ', assignedTo: 'inspector@test.com', submittedBy: 'admin@test.com', fileUrls: '', fileNames: ''  },
+                            ];
+                            const [searchTerm, showAll, email, role] = args;
+                            const filtered = sampleData.filter(row => {
+                                let canSee = false;
+                                if (showAll) {
+                                    canSee = (role === 'Admin' || role === 'Inspector');
+                                } else {
+                                    canSee = (row.submittedBy === email);
+                                }
+                                return canSee;
+                            });
+                            self.successCallback(filtered);
+                        } else if (prop === 'getDashboardStats') {
+                            self.successCallback({ total: 5, statusCounts: { 'รับเรื่อง': 1, 'กำลังดำเนินการ': 2, 'เสร็จสิ้น': 2 }, monthlyCounts: {'พ.ค. 2025': 1, 'มิ.ย. 2025': 0, 'ก.ค. 2025': 2, 'ส.ค. 2025': 1, 'ก.ย. 2025': 1, 'ต.ค. 2025': 0} });
+                        } else if (prop === 'updateStatus' || prop === 'assignInspector') {
+                            self.successCallback({ success: true, message: 'ดำเนินการสำเร็จ (Mock)' });
+                        } else if (prop === 'getUsersByRole') {
+                            self.successCallback([{name: 'Inspector Test', email: 'inspector@test.com'}]);
+                        } else {
+                            console.warn(`No mock implementation for ${prop}`);
+                        }
+                    } catch (e) {
+                         self.failureCallback(e);
+                    }
+                  }, 500); 
+
+                  return self;
+                };
+              }
+            })
+          }
+        };
+      }
+      
+      // Global state
+      let userProfile = null;
+      let filesToUpload = [];
+      let successModal, errorModal, assignModal;
+      let currentViewIsAll = false; // [ใหม่] Track the current table view
+
+      // --- INITIALIZATION ---
+      document.addEventListener('DOMContentLoaded', function() {
+          // ... (ส่วน init เหมือนเดิม) ...
+          successModal = new bootstrap.Modal(document.getElementById('successModal'));
+          errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+          assignModal = new bootstrap.Modal(document.getElementById('assignModal'));
+          
+          setupEventListeners();
+          checkSession();
+      });
+
+      function setupEventListeners() {
+          // ... (ส่วน Event Listeners อื่นๆ เหมือนเดิม) ...
+          document.getElementById('login-form').addEventListener('submit', handleLogin);
+          document.getElementById('register-form').addEventListener('submit', handleRegister);
+          document.getElementById('show-register-link').addEventListener('click', () => toggleAuthForms(true));
+          document.getElementById('show-login-link').addEventListener('click', () => toggleAuthForms(false));
+          document.getElementById('logout-btn').addEventListener('click', handleLogout);
+
+          document.getElementById('data-form').addEventListener('submit', handleFormSubmit);
+          document.getElementById('fileUpload').addEventListener('change', handleFileSelection);
+          document.getElementById('searchBtn').addEventListener('click', () => fetchAndDisplayData(currentViewIsAll));
+          document.getElementById('searchInput').addEventListener('keyup', (e) => { 
+            if(e.key === 'Enter') fetchAndDisplayData(currentViewIsAll);
+          });
+          document.getElementById('confirmAssignBtn').addEventListener('click', handleConfirmAssignment);
+          document.getElementById('exportCsvBtn').addEventListener('click', handleExportCsv);
+          
+          // [ใหม่] ปุ่มยกเลิกการแก้ไข
+          document.getElementById('cancelEditBtn').addEventListener('click', () => showView('table-view', currentViewIsAll));
+      }
+
+      // --- AUTHENTICATION (เหมือนเดิม) ---
+      // ... (โค้ดส่วน Authentication ทั้งหมดเหมือนเดิม) ...
+        function checkSession() {
+          showLoader(true);
+          const storedUser = sessionStorage.getItem('userProfile');
+          if (storedUser) {
+              userProfile = JSON.parse(storedUser);
+              initializeAppUI();
+          } else {
+              showLoader(false);
+              // Not logged in, show auth view
+          }
+      }
+
+      function handleLogin(e) {
+          e.preventDefault();
+          showLoader(true);
+          const username = document.getElementById('login-username').value;
+          const password = document.getElementById('login-password').value;
+          google.script.run
+              .withSuccessHandler(response => {
+                  if(response.success) {
+                      userProfile = response.user;
+                      sessionStorage.setItem('userProfile', JSON.stringify(userProfile));
+                      initializeAppUI();
+                  } else {
+                      showError(response.message);
+                  }
+              })
+              .withFailureHandler(showError)
+              .loginUser(username, password);
+      }
+      
+      function handleRegister(e) {
+        e.preventDefault();
+        showLoader(true);
+        const name = document.getElementById('register-name').value;
+        const username = document.getElementById('register-username').value;
+        const password = document.getElementById('register-password').value;
+        google.script.run
+          .withSuccessHandler(response => {
+            showLoader(false);
+            if(response.success) {
+              showSuccess(response.message + " กรุณาเข้าสู่ระบบ");
+              toggleAuthForms(false);
+              document.getElementById('register-form').reset();
+            } else {
+              showError(response.message);
+            }
+          })
+          .withFailureHandler(showError)
+          .registerUser(username, password, name);
+      }
+
+
+      function handleLogout() {
+          sessionStorage.removeItem('userProfile');
+          userProfile = null;
+          location.reload();
+      }
+
+      function toggleAuthForms(showRegister) {
+          document.getElementById('login-form-container').style.display = showRegister ? 'none' : 'block';
+          document.getElementById('register-form-container').style.display = showRegister ? 'block' : 'none';
+      }
+      
+      // --- UI & APP LOGIC ---
+       function initializeAppUI() {
+          document.getElementById('auth-view').style.display = 'none';
+          document.querySelector('.main-container').style.display = 'block';
+
+          document.getElementById('user-name').textContent = userProfile.name || userProfile.email;
+          document.getElementById('user-role').textContent = `สิทธิ์: ${userProfile.role}`;
+          
+          updateUIVisibility();
+          showView('dashboard-view');
+          showLoader(false);
+      }
+      function updateUIVisibility() {
+          const isAdmin = userProfile && userProfile.role === 'Admin';
+          const isInspector = userProfile && userProfile.role === 'Inspector';
+
+          document.querySelectorAll('.role-admin').forEach(el => {
+            el.style.display = isAdmin ? '' : 'none';
+          });
+          document.querySelectorAll('.role-inspector').forEach(el => {
+            el.style.display = (isAdmin || isInspector) ? '' : 'none';
+          });
+
+          // [ใหม่] ซ่อน/แสดงคอลัมน์ผู้รับผิดชอบตามสิทธิ์
+           const assignedToHeaders = document.querySelectorAll('th[data-col="assignedTo"]');
+           const assignedToCells = document.querySelectorAll('td[data-col="assignedTo"]');
+           const shouldShow = isAdmin || isInspector;
+           assignedToHeaders.forEach(th => th.style.display = shouldShow ? '' : 'none');
+           assignedToCells.forEach(td => td.style.display = shouldShow ? '' : 'none');
+      }
+
+      function showView(viewId, showAll = false) {
+          // ... (ส่วน showView ที่มีการปรับปรุงเล็กน้อย) ...
+          currentViewIsAll = showAll; // Update global state
+          document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+          document.getElementById(viewId).style.display = 'block';
+          
+          document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+          
+          if (viewId === 'table-view') {
+            if (showAll) {
+                document.querySelector(`.nav-link[onclick*="showView('table-view', true)"]`).classList.add('active');
+            } else {
+                document.querySelector(`.nav-link[onclick*="showView('table-view')"]`).classList.add('active');
+                document.querySelector(`.nav-link[onclick*="showView('table-view', true)"]`).classList.remove('active');
+            }
+          } else {
+             document.querySelector(`.nav-link[onclick*="${viewId}"]`).classList.add('active');
+          }
+
+
+          if (viewId === 'table-view') {
+              document.getElementById('searchInput').value = '';
+              document.getElementById('table-title').textContent = showAll ? 'จัดการรายการทั้งหมด' : 'รายการของฉัน';
+              fetchAndDisplayData(showAll);
+          } else if (viewId === 'dashboard-view') {
+              loadDashboard();
+          } else if (viewId === 'form-view') {
+              // [ใหม่] รีเซ็ตฟอร์มทุกครั้งที่เข้าหน้ายื่นเรื่องใหม่
+              resetFormMode();
+          }
+      }
+
+      // --- DATA HANDLING ---
+      function fetchAndDisplayData(showAll) {
+          // ... (ส่วน fetchAndDisplayData เหมือนเดิม) ...
+          showLoader(true);
+          const searchTerm = document.getElementById('searchInput').value;
+          google.script.run
+              .withSuccessHandler(data => {
+                  populateTable(data, showAll); // [ใหม่] Pass showAll to populateTable
+                  showLoader(false);
+              })
+              .withFailureHandler(showError)
+              .getData(searchTerm, showAll, userProfile.email, userProfile.role);
+      }
+      
+      function populateTable(data, showAll) {
+          const tbody = document.getElementById('data-table-body');
+          // ... (ส่วน populateTable ที่มีการแก้ไข) ...
+          const noDataMsg = document.getElementById('no-data-message');
+          tbody.innerHTML = '';
+
+          if (!data || data.length === 0) {
+              noDataMsg.style.display = 'block';
+              return;
+          }
+          noDataMsg.style.display = 'none';
+
+          const isAdminOrInspector = userProfile.role === 'Admin' || userProfile.role === 'Inspector';
+
+          data.forEach(row => {
+              const tr = document.createElement('tr');
+              const submissionDate = new Date(row.timestamp).toLocaleDateString('th-TH');
+              const fileLinks = row.fileUrls ? row.fileUrls.split('\n').map((url, i) => {
+                const fileName = row.fileNames.split('\n')[i] || 'ไฟล์';
+                return `<a href="${url}" target="_blank" title="${fileName}" class="me-2"><i class="bi bi-file-earmark-text"></i></a>`
+              }).join(' ') : 'ไม่มี';
+              
+              // [ใหม่] ตรรกะสำหรับปุ่มดำเนินการ
+              let actionButtons = '';
+              const canUserModify = row.status === 'รับเรื่อง' || row.status === 'แก้ไขข้อมูล';
+
+              if (isAdminOrInspector && showAll) {
+                // มุมมองของ Admin
+                 actionButtons = `
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            ดำเนินการ
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="changeStatus(${row.rowIndex}, 'กำลังดำเนินการ')">รับเรื่อง/ดำเนินการ</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="changeStatus(${row.rowIndex}, 'แก้ไขข้อมูล')">แจ้งแก้ไข</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="changeStatus(${row.rowIndex}, 'เสร็จสิ้น')">เสร็จสิ้น</a></li>
+                            ${userProfile.role === 'Admin' ? `
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="openAssignModal(${row.rowIndex}, '${row.id}')">มอบหมายผู้ตรวจ</a></li>
+                            ` : ''}
+                        </ul>
+                    </div>`;
+              } else {
+                 // มุมมอง "รายการของฉัน" ของผู้ใช้
+                 actionButtons = `
+                    <button class="btn btn-sm btn-outline-primary me-1" title="แก้ไข" onclick='handleEdit(${JSON.stringify(row)})' ${!canUserModify ? 'disabled' : ''}>
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" title="ลบ" onclick="handleDelete(${row.rowIndex}, '${row.id}')" ${!canUserModify ? 'disabled' : ''}>
+                        <i class="bi bi-trash"></i>
+                    </button>
+                 `;
+              }
+
+
+              tr.innerHTML = `
+                  <td>${row.id}</td>
+                  <td>${row.benefitType}</td>
+                  <td>${row.requesterName}</td>
+                  <td>${submissionDate}</td>
+                  <td><span class="status-badge status-${row.status}">${row.status}</span></td>
+                  <td data-col="assignedTo">${row.assignedTo || '<span class="text-muted">ยังไม่มอบหมาย</span>'}</td>
+                  <td>${fileLinks}</td>
+                  <td>${actionButtons}</td>
+              `;
+              tbody.appendChild(tr);
+          });
+          updateUIVisibility(); // re-apply role visibility for columns
+      }
+
+      function handleFormSubmit(e) {
+          e.preventDefault();
+          showLoader(true);
+          
+          const formData = {
+              requesterName: document.getElementById('requesterName').value,
+              requesterId: document.getElementById('requesterId').value,
+              benefitType: document.getElementById('benefitType').value,
+              details: document.getElementById('details').value,
+          };
+          
+          const editRowIndex = document.getElementById('editRowIndex').value;
+
+          if (editRowIndex) {
+              // --- โหมดแก้ไข ---
+              google.script.run
+                  .withSuccessHandler(handleSaveSuccess)
+                  .withFailureHandler(showError)
+                  .updateData(parseInt(editRowIndex), formData, userProfile.email);
+          } else {
+              // --- โหมดสร้างใหม่ ---
+              google.script.run
+                  .withSuccessHandler(handleSaveSuccess)
+                  .withFailureHandler(showError)
+                  .saveData(formData, filesToUpload, userProfile.email);
+          }
+      }
+
+      function handleSaveSuccess(response) {
+          showLoader(false);
+          if (response.success) {
+              showSuccess(response.message);
+              resetFormMode();
+              showView('table-view', false); // กลับไปหน้า "รายการของฉัน"
+          } else {
+              showError(response.message);
+          }
+      }
+
+      // [ใหม่] ฟังก์ชันจัดการการแก้ไข
+      function handleEdit(row) {
+          showView('form-view');
+          
+          // ตั้งค่าฟอร์มเป็นโหมดแก้ไข
+          document.getElementById('form-title').textContent = `แก้ไขเรื่องเลขที่: ${row.id}`;
+          document.getElementById('submitBtn').textContent = 'บันทึกการแก้ไข';
+          document.getElementById('cancelEditBtn').style.display = 'inline-block';
+          document.getElementById('editRowIndex').value = row.rowIndex;
+          
+          // ปิดการอัปโหลดไฟล์ในโหมดแก้ไข
+          const fileUploadInput = document.getElementById('fileUpload');
+          fileUploadInput.disabled = true;
+          fileUploadInput.parentElement.querySelector('.text-muted').style.display = 'block';
+
+          // เติมข้อมูลลงฟอร์ม
+          document.getElementById('requesterName').value = row.requesterName;
+          document.getElementById('requesterId').value = row.requesterId;
+          document.getElementById('benefitType').value = row.benefitType;
+          document.getElementById('details').value = row.details;
+      }
+
+      // [ใหม่] ฟังก์ชันจัดการการลบ
+      function handleDelete(rowIndex, recordId) {
+          if (!confirm(`คุณต้องการลบเรื่องเลขที่ ${recordId} ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้`)) {
+              return;
+          }
+          showLoader(true);
+          google.script.run
+              .withSuccessHandler(response => {
+                  if (response.success) {
+                      showSuccess(response.message);
+                      fetchAndDisplayData(false); // รีเฟรชตาราง "รายการของฉัน"
+                  } else {
+                      showError(response.message);
+                  }
+              })
+              .withFailureHandler(showError)
+              .deleteRecord(rowIndex, userProfile.email);
+      }
+
+      // [ใหม่] ฟังก์ชันรีเซ็ตฟอร์ม
+      function resetFormMode() {
+          document.getElementById('data-form').reset();
+          document.getElementById('form-title').textContent = 'แบบฟอร์มยื่นเรื่องขอรับรองเวลาราชการ ทบ.';
+          document.getElementById('submitBtn').textContent = 'ส่งข้อมูล';
+          document.getElementById('cancelEditBtn').style.display = 'none';
+          document.getElementById('editRowIndex').value = '';
+          
+          const fileUploadInput = document.getElementById('fileUpload');
+          fileUploadInput.disabled = false;
+          fileUploadInput.parentElement.querySelector('.text-muted').style.display = 'none';
+
+          document.getElementById('file-preview-container').innerHTML = '';
+          filesToUpload = [];
+      }
+      
+
+      // ... (โค้ดส่วนที่เหลือทั้งหมดเหมือนเดิม) ...
+      function changeStatus(rowIndex, newStatus) {
+        if (!confirm(`คุณต้องการเปลี่ยนสถานะเป็น "${newStatus}" ใช่หรือไม่?`)) return;
+        showLoader(true);
+        google.script.run
+          .withSuccessHandler(response => {
+            if(response.success) {
+              showSuccess(response.message);
+              fetchAndDisplayData(currentViewIsAll);
+            } else {
+              showError(response.message);
+            }
+          })
+          .withFailureHandler(showError)
+          .updateStatus(rowIndex, newStatus, userProfile.email);
+      }
+      
+      function openAssignModal(rowIndex, recordId) {
+        showLoader(true);
+        document.getElementById('assignRecordId').textContent = recordId;
+        document.getElementById('assignRowIndex').value = rowIndex;
+
+        google.script.run
+          .withSuccessHandler(inspectors => {
+            const select = document.getElementById('inspectorSelect');
+            select.innerHTML = '<option selected disabled value="">-- เลือกผู้ตรวจ --</option>';
+            inspectors.forEach(insp => {
+                select.innerHTML += `<option value="${insp.email}">${insp.name} (${insp.email})</option>`;
+            });
+            showLoader(false);
+            assignModal.show();
+          })
+          .withFailureHandler(showError)
+          .getUsersByRole('Inspector');
+      }
+
+      function handleConfirmAssignment() {
+        const rowIndex = document.getElementById('assignRowIndex').value;
+        const inspectorEmail = document.getElementById('inspectorSelect').value;
+
+        if (!inspectorEmail) {
+            alert('กรุณาเลือกผู้ตรวจ');
+            return;
+        }
+
+        showLoader(true);
+        assignModal.hide();
+        google.script.run
+          .withSuccessHandler(response => {
+            if (response.success) {
+                showSuccess(response.message);
+                fetchAndDisplayData(currentViewIsAll);
+            } else {
+                showError(response.message);
+            }
+          })
+          .withFailureHandler(showError)
+          .assignInspector(rowIndex, inspectorEmail, userProfile.email);
+      }
+
+      function handleExportCsv() {
+        showLoader(true);
+        const searchTerm = document.getElementById('searchInput').value;
+        google.script.run
+            .withSuccessHandler(response => {
+                showLoader(false);
+                if (response.success) {
+                    const blob = new Blob([response.csvData], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement("a");
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", `export_data_${new Date().toISOString().slice(0,10)}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } else {
+                    showError(response.message);
+                }
+            })
+            .withFailureHandler(showError)
+            .exportDataToCsv(searchTerm, userProfile.role, userProfile.email);
+      }
+
+      function handleFileSelection(event) {
+          const files = Array.from(event.target.files);
+          const previewContainer = document.getElementById('file-preview-container');
+          
+          files.forEach(file => {
+            if (filesToUpload.some(f => f.name === file.name)) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const fileData = {
+                    name: file.name,
+                    mimeType: file.type,
+                    data: e.target.result.split(',')[1]
+                };
+                filesToUpload.push(fileData);
+                
+                const previewItem = document.createElement('div');
+                previewItem.className = 'file-preview-item';
+                
+                let innerHTML = '';
+                if (file.type.startsWith('image/')) {
+                    innerHTML = `<img src="${e.target.result}" alt="${file.name}">`;
+                } else {
+                    innerHTML = `<i class="bi bi-file-earmark-text text-secondary" style="font-size: 2rem;"></i>`;
+                }
+                innerHTML += `<small>${file.name}</small>`;
+                previewItem.innerHTML = innerHTML;
+
+                const removeBtn = document.createElement('div');
+                removeBtn.className = 'remove-file-btn';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.onclick = function() {
+                    const index = filesToUpload.findIndex(f => f.name === file.name);
+                    if (index > -1) {
+                        filesToUpload.splice(index, 1);
+                    }
+                    previewContainer.removeChild(previewItem);
+                };
+                
+                previewItem.appendChild(removeBtn);
+                previewContainer.appendChild(previewItem);
+            };
+            reader.readAsDataURL(file);
+          });
+      }
+
+      let statusChartInstance, monthlyChartInstance;
+      function loadDashboard() {
+        showLoader(true);
+        google.script.run
+          .withSuccessHandler(stats => {
+            document.getElementById('total-requests').textContent = stats.total;
+            document.getElementById('pending-requests').textContent = stats.statusCounts['กำลังดำเนินการ'] || 0;
+            document.getElementById('revision-requests').textContent = stats.statusCounts['แก้ไขข้อมูล'] || 0;
+            document.getElementById('completed-requests').textContent = stats.statusCounts['เสร็จสิ้น'] || 0;
+            
+            renderStatusChart(stats.statusCounts);
+            renderMonthlyChart(stats.monthlyCounts);
+            
+            showLoader(false);
+          })
+          .withFailureHandler(showError)
+          .getDashboardStats();
+      }
+
+      function renderStatusChart(statusData) {
+        const ctx = document.getElementById('statusChart').getContext('2d');
+        if(statusChartInstance) statusChartInstance.destroy();
+        statusChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(statusData),
+                datasets: [{
+                    data: Object.values(statusData),
+                    backgroundColor: ['#e3f2fd', '#fff3e0', '#ffebee', '#e8f5e9', '#e0e0e0'],
+                    borderColor: ['#1565c0', '#e65100', '#c62828', '#2e7d32', '#616161'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                }
+            }
+        });
+      }
+      
+      function renderMonthlyChart(monthlyData) {
+        const ctx = document.getElementById('monthlyChart').getContext('2d');
+        if(monthlyChartInstance) monthlyChartInstance.destroy();
+        monthlyChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(monthlyData),
+                datasets: [{
+                    label: 'จำนวนเรื่องที่ยื่น',
+                    data: Object.values(monthlyData),
+                    backgroundColor: 'rgba(0, 77, 64, 0.6)',
+                    borderColor: 'rgba(0, 77, 64, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                           stepSize: 1
+                        }
+                    }
+                },
+                responsive: true,
+            }
+        });
+      }
+
+
+      function showLoader(show) {
+          document.getElementById('loader').style.display = show ? 'flex' : 'none';
+      }
+
+      function showSuccess(message) {
+          document.getElementById('successMessage').textContent = message;
+          successModal.show();
+      }
+
+      function showError(error) {
+          showLoader(false);
+          let message = typeof error === 'object' ? error.message : error;
+          document.getElementById('errorMessage').textContent = message;
+          errorModal.show();
+          console.error(error);
+      }
+    </script>
+</body>
+</html>
