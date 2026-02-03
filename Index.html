@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเสนอขอ พ.ส.ร.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap');
+        body { font-family: 'Sarabun', sans-serif; background-color: #f3f4f6; }
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #09f; animation: spin 1s ease infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- Loading -->
+    <div id="loading" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
+        <div class="bg-white p-5 rounded-lg flex flex-col items-center">
+            <div class="spinner mb-2"></div>
+            <p id="loading-text">กำลังประมวลผล...</p>
+        </div>
+    </div>
+
+    <!-- Login -->
+    <div id="auth-section" class="min-h-screen flex items-center justify-center page-section active">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md border-t-4 border-green-600">
+            <h2 class="text-2xl font-bold text-center mb-6 text-green-800">ระบบเสนอขอ พ.ส.ร.</h2>
+            <div id="login-box">
+                <form onsubmit="handleLogin(event)">
+                    <div class="mb-4"><label class="block mb-2">ชื่อผู้ใช้งาน</label><input type="text" id="username" class="w-full p-2 border rounded" required></div>
+                    <div class="mb-6"><label class="block mb-2">รหัสผ่าน</label><input type="password" id="password" class="w-full p-2 border rounded" required></div>
+                    <button type="submit" class="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700">เข้าสู่ระบบ</button>
+                </form>
+                <p class="mt-4 text-center text-sm">ยังไม่มีบัญชี? <a href="#" onclick="toggleAuth('register')" class="text-blue-600">ลงทะเบียน</a></p>
+            </div>
+            
+            <!-- (Register Box Code - เหมือนเดิม) -->
+            <div id="register-box" class="hidden">
+                <form id="registerForm" onsubmit="handleRegister(event)">
+                    <div class="mb-3"><label class="block">ชื่อ-สกุล (ยศ ชื่อ สกุล)</label><input type="text" name="reg_name" class="w-full p-2 border rounded" required></div>
+                    <div class="mb-3"><label class="block">ชื่อผู้ใช้งาน</label><input type="text" name="reg_username" class="w-full p-2 border rounded" required></div>
+                    <div class="mb-3"><label class="block">รหัสผ่าน</label><input type="password" name="reg_password" class="w-full p-2 border rounded" required></div>
+                    <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">ลงทะเบียน</button>
+                </form>
+                <p class="mt-4 text-center text-sm">มีบัญชีแล้ว? <a href="#" onclick="toggleAuth('login')" class="text-green-600">เข้าสู่ระบบ</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Structure (เหมือนเดิมจากเวอร์ชันก่อนหน้า Copy มาวางได้เลยครับ หรือใช้ตัวย่อนี้เพื่อเทส Login) -->
+    <div id="app-section" class="min-h-screen flex flex-col page-section">
+        <nav class="bg-green-700 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-20">
+            <div class="font-bold text-lg">ระบบ พ.ส.ร.</div>
+            <button onclick="logout()" class="bg-red-500 px-3 py-1 rounded text-sm hover:bg-red-600">ออก</button>
+        </nav>
+        <div class="p-10 text-center">
+            <h1 class="text-2xl">ยินดีต้อนรับคุณ <span id="user-display" class="font-bold text-green-600"></span></h1>
+            <p class="mt-4 text-gray-600">เข้าสู่ระบบสำเร็จ! (กรุณา Copy โค้ดส่วน Main App จากไฟล์ก่อนหน้ามาใส่ตรงนี้หากต้องการ UI เต็มรูปแบบ)</p>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        function toggleLoading(show, text="กำลังประมวลผล...") {
+            document.getElementById('loading').classList.toggle('hidden', !show);
+            document.getElementById('loading-text').innerText = text;
+        }
+
+        function toggleAuth(mode) {
+            document.getElementById('login-box').classList.toggle('hidden', mode !== 'login');
+            document.getElementById('register-box').classList.toggle('hidden', mode !== 'register');
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+
+            toggleLoading(true, "กำลังตรวจสอบข้อมูล...");
+            
+            // เพิ่ม withFailureHandler เพื่อดักจับ Error จาก Server
+            google.script.run
+                .withSuccessHandler(res => {
+                    toggleLoading(false);
+                    if (res.status) {
+                        currentUser = res.user;
+                        enterApp();
+                    } else {
+                        alert("แจ้งเตือน: " + res.message);
+                    }
+                })
+                .withFailureHandler(error => {
+                    toggleLoading(false);
+                    alert("เกิดข้อผิดพลาดจากระบบ: " + error.message);
+                    console.error(error);
+                })
+                .loginUser(u, p);
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            const form = document.getElementById('registerForm');
+            toggleLoading(true);
+            google.script.run
+                .withSuccessHandler(res => {
+                    toggleLoading(false);
+                    alert(res.message);
+                    if (res.status) toggleAuth('login');
+                })
+                .withFailureHandler(error => {
+                    toggleLoading(false);
+                    alert("Register Error: " + error.message);
+                })
+                .registerUser({
+                    reg_name: form.reg_name.value,
+                    reg_username: form.reg_username.value,
+                    reg_password: form.reg_password.value
+                });
+        }
+
+        function enterApp() {
+            document.getElementById('auth-section').classList.remove('active');
+            document.getElementById('app-section').classList.add('active');
+            document.getElementById('user-display').innerText = `${currentUser.name} (${currentUser.role})`;
+            
+            // หากคุณใช้ไฟล์ HTML เต็มรูปแบบ ให้เรียกฟังก์ชันโหลดข้อมูลตรงนี้
+            // loadDashboard(); 
+        }
+
+        function logout() { location.reload(); }
+    </script>
+</body>
+</html>
